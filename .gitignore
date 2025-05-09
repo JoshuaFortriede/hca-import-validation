@@ -4,3 +4,12 @@
 #Build Files
 *.egg-info/
 dist/
+
+venv/
+
+.secrets/
+
+logs/
+
+#Python
+__pycache__/

@@ -41,6 +41,24 @@ def _parse_args(argv):
         dest="total_retries",
         help="The number of times to retry the validation process.",
     )
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        default=False,
+        help="Enable verbose output.",
+    )
+    parser.add_argument(
+        "--lungmap",
+        action="store_true",
+        default=False,
+        help="Use the LungMAP staging area validator.",
+    )
+    parser.add_argument(
+        "--multiple-entities",
+        action="store_true",
+        default=False,
+        help="Use the LungMAP staging area validator for multiple entities.",
+    )
     return parser.parse_args(argv)
 
 
@@ -51,5 +69,10 @@ if __name__ == "__main__":
         ignore_dangling_inputs=args.ignore_dangling_inputs,
         validate_json=args.validate_json,
         total_retries=args.total_retries,
+        verbose=args.verbose,
+        lungmap=args.lungmap,
+        multiple_entities=args.multiple_entities,
     )
+    # if args.lungmap:
+    #     adapter.multiple_entities = True
     sys.exit(adapter.main())
