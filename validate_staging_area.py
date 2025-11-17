@@ -3,10 +3,22 @@ Runs a pre-check of a staging area to identify issues that might cause the
 snapshot or indexing processes to fail.
 """
 import argparse
+import logging
 import sys
 
-from hca.staging_area_validator import StagingAreaValidator
 
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(lineno)d - %(message)s',
+    handlers=[
+        logging.FileHandler("app.log"),
+        logging.StreamHandler()
+    ]
+)
+
+
+from hca.staging_area_validator import StagingAreaValidator
+log = logging.getLogger(__name__)
 
 def _parse_args(argv):
     parser = argparse.ArgumentParser(description=__doc__)
@@ -64,6 +76,7 @@ def _parse_args(argv):
 
 if __name__ == "__main__":
     args = _parse_args(sys.argv[1:])
+    log.info("Arguments: %s", args)
     adapter = StagingAreaValidator(
         staging_area=args.staging_area,
         ignore_dangling_inputs=args.ignore_dangling_inputs,
