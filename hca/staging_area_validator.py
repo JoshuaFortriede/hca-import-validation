@@ -163,7 +163,6 @@ class StagingAreaValidator:
                 log.warning("File is not part of a subgraph: %s", file_name)
             if self.file_errors:
                 exit_code |= 1
-                log.error("Encountered %i files with errors", len(self.file_errors))
                 for schema, files in self.file_error_summary.items():
                     log.error("Encountered %i files with errors in %s", len(files), schema)
             
@@ -353,8 +352,9 @@ class StagingAreaValidator:
         metadata_id, metadata_version = metadata_file[:-5].split("_")
         file_json = self.client.download_blob_as_json(blob)
         self.validate_file_json(file_json, blob_name)
-        if provenance := file_json.get("provenance"):
-            assert metadata_id == provenance["document_id"]
+        provenance = file_json["provenance"]
+        assert metadata_id == provenance["document_id"]
+
         if metadata_file := self.metadata_files.get(metadata_id):
             metadata_file["name"].add(blob_name)
             metadata_file["metadata_versions"].add(metadata_version)
@@ -362,22 +362,41 @@ class StagingAreaValidator:
             if metadata_type.endswith("_file"):
                 metadata_file["data_file_name"] = file_json["file_core"]["file_name"]
                 metadata_file["found_data_file"] = False
-            if metadata_type == "supplementary_file" and file_json.get(
-                "provenance", {}
-            ).get("submitter_id"):
-                try:
-                    self.validate_file_description(file_json.get("file_description"))
-                except Exception as e:
-                    self.file_errors[blob_name] = e
-                    metadata_file["valid_stratification"] = False
-                    log.error("Invalid file_description in %s.", blob_name)
-                else:
-                    metadata_file["valid_stratification"] = True
+
+            if metadata_type == "supplementary_file" and "submitter_id" in provenance:
+                content_description = file_json["file_core"].get(
+                    "content_description", []
+                )
+                if any(
+                    "matrix" in v.lower()
+                    for cd in content_description
+                    for v in cd.values()
+                ):
+                    try:
+                        self.validate_stratification(file_json.get("file_description"))
+                    except Exception as e:
+                        self.file_errors[blob.name] = e
+                        metadata_file["valid_stratification"] = False
+                        log.error("Invalid file_description in %s.", blob.name)
+                    else:
+                        metadata_file["valid_stratification"] = True
+
+            # if metadata_type == "supplementary_file" and file_json.get(
+            #     "provenance", {}
+            # ).get("submitter_id"):
+            #     try:
+            #         self.validate_file_description(file_json.get("file_description"))
+            #     except Exception as e:
+            #         self.file_errors[blob_name] = e
+            #         metadata_file["valid_stratification"] = False
+            #         log.error("Invalid file_description in %s.", blob_name)
+            #     else:
+            #         metadata_file["valid_stratification"] = True
         else:
             self.extra_files.append(blob_name)
 
-    def validate_file_description(self, file_description: str) -> None:
-        if not file_description:
+    def validate_stratification(self, stratification: str) -> None:
+        if not stratification:
             return
         strata = [
             {
@@ -386,9 +405,9 @@ class StagingAreaValidator:
                     point.split("=") for point in stratum.split(";")
                 )
             }
-            for stratum in file_description.split("\n")
+            for stratum in stratification.split("\n")
         ]
-        log.debug(strata)
+        log.debug("Strata: %s", strata)
         valid_keys = [
             "genusSpecies",
             "developmentStage",
